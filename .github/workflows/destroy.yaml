@@ -1,0 +1,90 @@
+name: Destroy AWS VPC
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DESTROY" to confirm deletion of all VPC resources'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to destroy'
+        type: choice
+        options:
+          - dev
+          - prod
+        default: 'dev'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy-vpc:
+    runs-on: ubuntu-latest
+    # 只有输入确认信息才执行
+    if: github.event.inputs.confirm == 'DESTROY'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Get VPC ID before destroy (for verification)
+        id: get_vpc
+        run: |
+          cd terraform
+          # 如果状态文件存在，获取 VPC ID
+          if terraform state list 2>/dev/null | grep -q "aws_vpc.main"; then
+            VPC_ID=$(terraform output -raw vpc_id 2>/dev/null || echo "unknown")
+            echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+            echo "VPC to destroy: $VPC_ID"
+          else
+            echo "vpc_id=not_found" >> $GITHUB_OUTPUT
+            echo "No VPC found in terraform state"
+          fi
+
+      - name: Terraform Init
+        run: terraform init -reconfigure
+        working-directory: ./terraform
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: ./terraform
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment }}
+
+      - name: Verify destruction
+        run: |
+          echo "✅ VPC 资源已删除"
+          echo "环境: ${{ github.event.inputs.environment }}"
+          echo "VPC ID: ${{ steps.get_vpc.outputs.vpc_id }}"
+          
+      - name: List remaining resources (for debugging)
+        run: |
+          cd terraform
+          REMAINING=$(terraform state list 2>/dev/null || echo "State file empty/not found")
+          if [ "$REMAINING" != "State file empty/not found" ] && [ -n "$REMAINING" ]; then
+            echo "⚠️ 以下资源可能未被删除："
+            echo "$REMAINING"
+          else
+            echo "✅ 没有残留资源"
+          fi
+        continue-on-error: true
+
+      - name: Clean up state file (optional)
+        run: |
+          cd terraform
+          # 可选：删除本地状态文件
+          rm -f terraform.tfstate* 2>/dev/null || true
+          echo "本地状态文件已清理"
