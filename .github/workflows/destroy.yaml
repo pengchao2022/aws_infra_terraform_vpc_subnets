@@ -22,7 +22,6 @@ permissions:
 jobs:
   destroy-vpc:
     runs-on: ubuntu-latest
-    # 只有输入确认信息才执行
     if: github.event.inputs.confirm == 'DESTROY'
     
     steps:
@@ -40,51 +39,86 @@ jobs:
         with:
           terraform_version: 1.7.0
 
-      - name: Get VPC ID before destroy (for verification)
-        id: get_vpc
+      # 诊断步骤（可选，可以保留用于调试）
+      - name: DIAGNOSTIC - Check State Location
         run: |
           cd terraform
-          # 如果状态文件存在，获取 VPC ID
-          if terraform state list 2>/dev/null | grep -q "aws_vpc.main"; then
-            VPC_ID=$(terraform output -raw vpc_id 2>/dev/null || echo "unknown")
-            echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
-            echo "VPC to destroy: $VPC_ID"
-          else
-            echo "vpc_id=not_found" >> $GITHUB_OUTPUT
-            echo "No VPC found in terraform state"
-          fi
+          
+          echo "========================================="
+          echo "1. 当前目录内容"
+          echo "========================================="
+          ls -la
+          
+          echo ""
+          echo "========================================="
+          echo "2. backend.tf 内容"
+          echo "========================================="
+          cat backend.tf 2>/dev/null || echo "❌ backend.tf 不存在！"
+          
+          echo ""
+          echo "========================================="
+          echo "3. S3 中的状态文件"
+          echo "========================================="
+          aws s3 ls s3://pengchao2022-terraform-state/vpc/ || echo "❌ S3 路径不存在"
+          aws s3 cp s3://pengchao2022-terraform-state/vpc/terraform.tfstate - 2>/dev/null | jq '.resources[] | {type: .type, name: .name}' || echo "❌ 无法读取状态文件"
+          
+        working-directory: ./terraform
+        continue-on-error: true
 
+      # ✅ 只初始化一次（在获取 VPC ID 之前）
       - name: Terraform Init
         run: terraform init -reconfigure
         working-directory: ./terraform
 
+      # ✅ 获取 VPC ID（在 destroy 之前）
+      - name: Get VPC ID before destroy
+        id: get_vpc
+        run: |
+          cd terraform
+          if terraform state list 2>/dev/null | grep -q "aws_vpc.main"; then
+            VPC_ID=$(terraform output -raw vpc_id 2>/dev/null || echo "unknown")
+            echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+            echo "========================================="
+            echo "✅ 找到 VPC: $VPC_ID"
+            echo "========================================="
+          else
+            echo "vpc_id=not_found" >> $GITHUB_OUTPUT
+            echo "========================================="
+            echo "⚠️ 没有找到 VPC 资源"
+            echo "可能原因："
+            echo "  1. 从未创建过 VPC"
+            echo "  2. 已经被删除"
+            echo "  3. 状态文件不存在或为空"
+            echo "========================================="
+          fi
+        working-directory: ./terraform
+
+      # ✅ 执行销毁
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: ./terraform
         env:
           TF_VAR_environment: ${{ github.event.inputs.environment }}
 
+      # ✅ 验证结果
       - name: Verify destruction
         run: |
-          echo "✅ VPC 资源已删除"
+          echo "========================================="
+          echo "✅ 销毁操作完成"
           echo "环境: ${{ github.event.inputs.environment }}"
           echo "VPC ID: ${{ steps.get_vpc.outputs.vpc_id }}"
+          echo "========================================="
           
-      - name: List remaining resources (for debugging)
+      # ✅ 检查残留资源
+      - name: List remaining resources
         run: |
           cd terraform
-          REMAINING=$(terraform state list 2>/dev/null || echo "State file empty/not found")
-          if [ "$REMAINING" != "State file empty/not found" ] && [ -n "$REMAINING" ]; then
+          echo "检查残留资源..."
+          REMAINING=$(terraform state list 2>/dev/null || echo "")
+          if [ -n "$REMAINING" ]; then
             echo "⚠️ 以下资源可能未被删除："
             echo "$REMAINING"
           else
             echo "✅ 没有残留资源"
           fi
         continue-on-error: true
-
-      - name: Clean up state file (optional)
-        run: |
-          cd terraform
-          # 可选：删除本地状态文件
-          rm -f terraform.tfstate* 2>/dev/null || true
-          echo "本地状态文件已清理"
