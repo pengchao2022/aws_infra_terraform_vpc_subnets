@@ -1,19 +1,11 @@
 name: Deploy AWS VPC
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
-
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment'
-        type: choice
-        options:
-          - dev
-          - prod
-        default: 'dev'
 
 permissions:
   id-token: write

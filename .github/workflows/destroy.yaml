@@ -75,6 +75,6 @@ jobs:
         run: |
           echo "========================================="
           echo "✅ Successfully removed the VPC resources"
-          echo "环境: ${{ github.event.inputs.environment }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
           echo "VPC ID: ${{ steps.get_vpc.outputs.vpc_id }}"
           echo "========================================="
