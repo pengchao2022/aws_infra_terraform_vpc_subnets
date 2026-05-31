@@ -60,5 +60,5 @@ jobs:
         run: |
           echo "✅ VPC Successfully Created!"
           echo "VPC ID: ${{ steps.output.outputs.vpc_id }}"
-          echo "公有子网: ${{ steps.output.outputs.public_subnet_ids }}"
-          echo "私有子网: ${{ steps.output.outputs.private_subnet_ids }}"
+          echo "Public_subnet_ids: ${{ steps.output.outputs.public_subnet_ids }}"
+          echo "Private_subnet_ids: ${{ steps.output.outputs.private_subnet_ids }}"
