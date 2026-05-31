@@ -74,7 +74,7 @@ jobs:
       - name: Verify destruction
         run: |
           echo "========================================="
-          echo "✅ 销毁操作完成"
+          echo "✅ Successfully removed the VPC resources"
           echo "环境: ${{ github.event.inputs.environment }}"
           echo "VPC ID: ${{ steps.get_vpc.outputs.vpc_id }}"
           echo "========================================="
