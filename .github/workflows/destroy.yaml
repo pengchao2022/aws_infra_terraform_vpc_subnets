@@ -49,7 +49,7 @@ jobs:
         id: get_vpc
         run: |
           cd terraform
-          echo "=== 检查 Terraform 状态 ==="
+          echo "We are checking terraform state"
           terraform state list
           echo ""
           if terraform state list 2>/dev/null | grep -q "aws_vpc.main"; then
