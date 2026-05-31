@@ -1,0 +1,72 @@
+name: Deploy AWS VPC
+
+on:
+  push:
+    branches:
+      - main
+      
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        type: choice
+        options:
+          - dev
+          - prod
+        default: 'dev'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-vpc:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+        working-directory: ./terraform
+        continue-on-error: false
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+
+      - name: Terraform Output
+        id: output
+        run: |
+          echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_OUTPUT
+          echo "public_subnet_ids=$(terraform output -json public_subnet_ids)" >> $GITHUB_OUTPUT
+          echo "private_subnet_ids=$(terraform output -json private_subnet_ids)" >> $GITHUB_OUTPUT
+        working-directory: ./terraform
+
+      - name: Display outputs
+        run: |
+          echo "✅ VPC 创建成功！"
+          echo "VPC ID: ${{ steps.output.outputs.vpc_id }}"
+          echo "公有子网: ${{ steps.output.outputs.public_subnet_ids }}"
+          echo "私有子网: ${{ steps.output.outputs.private_subnet_ids }}"
