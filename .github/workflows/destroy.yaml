@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type "DESTROY" to confirm deletion of all VPC resources'
+        description: 'Type "DESTROY" to confirm deletion'
         required: true
         type: string
       environment:
@@ -13,7 +13,7 @@ on:
         options:
           - dev
           - prod
-        default: 'dev'
+        required: true
 
 permissions:
   id-token: write
@@ -28,7 +28,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -37,44 +37,19 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.7.0
+          terraform_version: 1.8.0
 
       - name: Terraform Init
-        run: |
-          cd terraform 
-          terraform init -reconfigure
+        run: terraform init -reconfigure
 
-    
-      - name: Get VPC ID before destroy
-        id: get_vpc
-        run: |
-          cd terraform
-          echo "We are checking terraform state"
-          terraform state list
-          echo ""
-          if terraform state list 2>/dev/null | grep -q "aws_vpc.main"; then
-            VPC_ID=$(terraform output -raw vpc_id 2>/dev/null || echo "unknown")
-            echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
-            echo "✅ Found VPC: $VPC_ID"
-          else
-            echo "vpc_id=not_found" >> $GITHUB_OUTPUT
-            echo "We can't find VPC in state file"
-            echo "The resources in state file are:"
-            terraform state list
-          fi
-
-      
+      # 关键修改：使用 -target 精准销毁选定环境，避免误删
       - name: Terraform Destroy
         run: |
-          cd terraform
-          terraform destroy -auto-approve
-        env:
-          TF_VAR_environment: ${{ github.event.inputs.environment }}
+          echo "Destroying environment: ${{ github.event.inputs.environment }}"
+          terraform destroy -auto-approve -target="module.vpc[\"${{ github.event.inputs.environment }}\"]"
 
       - name: Verify destruction
         run: |
           echo "========================================="
-          echo "✅ Successfully removed the VPC resources"
-          echo "Environment: ${{ github.event.inputs.environment }}"
-          echo "VPC ID: ${{ steps.get_vpc.outputs.vpc_id }}"
+          echo "✅ Successfully destroyed environment: ${{ github.event.inputs.environment }}"
           echo "========================================="
