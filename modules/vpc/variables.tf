@@ -42,3 +42,9 @@ variable "private_subnet_count" {
     error_message = "The private_subnet_count cannot be negative."
   }
 }
+
+variable "enable_nat_gateway" {
+  description = "Whether to create a NAT Gateway for private subnets"
+  type        = bool
+  default     = false
+}

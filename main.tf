@@ -1,9 +1,15 @@
-provider "aws" {
-  region = var.aws_region
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
 }
 
-# 通过 for_each 动态循环创建 VPC 模块
-# 这将根据 terraform.tfvars 中的 vpc_configs map 自动实例化对应的环境
+provider "aws" {
+  region = var.aws_region 
+}
 module "vpc" {
   source   = "./modules/vpc"
   
@@ -18,4 +24,5 @@ module "vpc" {
   vpc_cidr             = each.value.cidr
   public_subnet_count  = each.value.public_subnet_count
   private_subnet_count = each.value.private_subnet_count
+  enable_nat_gateway   = each.value.enable_nat_gateway
 }
