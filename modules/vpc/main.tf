@@ -21,6 +21,8 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = merge(local.common_tags, { Name = "${var.vpc_name}-igw" })
+
+  depends_on = [aws_vpc.main]
 }
 
 resource "aws_subnet" "public" {
@@ -73,4 +75,26 @@ resource "aws_route_table_association" "private" {
   count          = var.private_subnet_count
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[count.index].id
+}
+
+# 只有当 enable_nat_gateway 为 true 时才创建 Elastic IP
+resource "aws_eip" "nat" {
+  count  = var.enable_nat_gateway ? 1 : 0
+  domain = "vpc"
+}
+
+# 创建 NAT Gateway
+resource "aws_nat_gateway" "main" {
+  count         = var.enable_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
+  subnet_id     = aws_subnet.public[0].id # NAT 网关必须放在公有子网中
+  depends_on    = [aws_internet_gateway.main]
+}
+
+# 更新私有子网的路由表，指向 NAT Gateway
+resource "aws_route" "private_nat_gateway" {
+  count                  = var.enable_nat_gateway ? var.private_subnet_count : 0
+  route_table_id         = aws_route_table.private[count.index].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main[0].id
 }

@@ -10,5 +10,6 @@ variable "vpc_configs" {
     cidr                 = string
     public_subnet_count  = number
     private_subnet_count = number
+    enable_nat_gateway   = bool
   }))
 }
