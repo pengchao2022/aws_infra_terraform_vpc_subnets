@@ -13,6 +13,7 @@ on:
         options:
           - dev
           - prod
+          - all
         required: true
 
 permissions:
@@ -45,8 +46,13 @@ jobs:
       # Use -target to precisely select the environment and avoid accidental deletion
       - name: Terraform Destroy
         run: |
-          echo "Destroying environment: ${{ github.event.inputs.environment }}"
-          terraform destroy -auto-approve -target="module.vpc[\"${{ github.event.inputs.environment }}\"]"
+          if [ "${{ github.event.inputs.environment }}" == "all" ]; then
+            echo "Destroying ALL environments..."
+            terraform destroy -auto-approve
+          else
+            echo "Destroying environment: ${{ github.event.inputs.environment }}"
+            terraform destroy -auto-approve -target="module.vpc[\"${{ github.event.inputs.environment }}\"]"
+          fi
 
       - name: Verify destruction
         run: |
