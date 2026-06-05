@@ -6,11 +6,11 @@ This repository uses Terraform to deploy a complete AWS VPC infrastructure. When
 
 This module creates the following AWS resources:
 
-- **1 VPC** with customizable CIDR block (default: 10.0.0.0/16)
-- **3 Public Subnets** (distributed across 3 Availability Zones)
-- **3 Private Subnets** (distributed across 3 Availability Zones)
-- **1 Internet Gateway (IGW)** for public internet access
-- **Route Tables** and associations for public and private subnets
+- will create VPCs for different ENV (prod , dev)
+- all the VPCs will have igw
+- You can decide enable NAT or not by modifing the terraform.tfvars 
+- Using for_each to create VPCs in different Environment
+
 
 ## Prerequisites
 
@@ -64,3 +64,26 @@ terraform init
 
 # Destroy all resources
 terraform destroy
+
+```
+
+## for_each used in main.tf
+
+```shell
+module "vpc" {
+  source   = "./modules/vpc"
+  
+  # Iterate through the vpc_configs map we defined in variables.tf
+  for_each = var.vpc_configs
+
+  # Use the key (dev, prod) in the map as the environment name
+  vpc_name             = "${each.key}-vpc"
+  environment          = each.key
+  
+  # Retrieve configuration parameters from the value of the map
+  vpc_cidr             = each.value.cidr
+  public_subnet_count  = each.value.public_subnet_count
+  private_subnet_count = each.value.private_subnet_count
+  enable_nat_gateway   = each.value.enable_nat_gateway
+}
+```

@@ -12,7 +12,7 @@ output "vpc_configurations" {
   }
 }
 
-# 如果你经常需要单独获取某个环境的 VPC ID，可以添加这些快捷输出
+
 output "dev_vpc_id" {
   description = "The ID of the Development VPC"
   value       = try(module.vpc["dev"].vpc_id, null)
