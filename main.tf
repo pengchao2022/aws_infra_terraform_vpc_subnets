@@ -13,14 +13,14 @@ provider "aws" {
 module "vpc" {
   source   = "./modules/vpc"
   
-  # 遍历我们在 variables.tf 中定义的 vpc_configs map
+  # Iterate through the vpc_configs map we defined in variables.tf
   for_each = var.vpc_configs
 
-  # 将 map 中的 key (dev, prod) 作为环境名称
+  # Use the key (dev, prod) in the map as the environment name
   vpc_name             = "${each.key}-vpc"
   environment          = each.key
   
-  # 从 map 的 value 中获取配置参数
+  # Retrieve configuration parameters from the value of the map
   vpc_cidr             = each.value.cidr
   public_subnet_count  = each.value.public_subnet_count
   private_subnet_count = each.value.private_subnet_count

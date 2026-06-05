@@ -64,3 +64,4 @@ terraform init
 
 # Destroy all resources
 terraform destroy
+

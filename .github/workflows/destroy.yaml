@@ -42,7 +42,7 @@ jobs:
       - name: Terraform Init
         run: terraform init -reconfigure
 
-      # 关键修改：使用 -target 精准销毁选定环境，避免误删
+      # Use -target to precisely select the environment and avoid accidental deletion
       - name: Terraform Destroy
         run: |
           echo "Destroying environment: ${{ github.event.inputs.environment }}"
