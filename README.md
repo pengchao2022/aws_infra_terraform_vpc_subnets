@@ -125,6 +125,57 @@ vpc_configs = {
 #   }
 }
 ```
+## Difference between Map and List in Terraform both use for_each
 
+- List (列表)
+
+  - list 是一个有序的元素集合。元素在列表中通过索引 (index) 访问，从 0 开始
+  - 有序、通过数字下标访问
+  - 当你有一组同质化的资源，且顺序很重要（例如可用区列表，或者一组按顺序创建的子网）
+  - 使用中括号 []
+
+- example for list
+```shell
+# 定义一个 list
+variable "availability_zones" {
+  type    = list(string)
+  default = ["us-east-1a", "us-east-1b", "us-east-1c"]
+}
+
+# 访问方式：使用下标 (从0开始)
+# var.availability_zones[0]  -> "us-east-1a"
+
+```
+
+- Map (映射 或 字典)
+
+  - map 是一个键值对 (key-value) 的集合。元素通过自定义的键 (key) 访问，而不是通过顺序
+  - 无序、通过唯一的字符串 key 查找值
+  - 当你需要通过名称、ID 或环境标识来检索数据时（例如你的 vpc_configs，通过 dev 或 prod 查找配置）
+  - 使用花括号 {}
+
+- example for Map
+```shell
+# 定义一个 map
+variable "environment_configs" {
+  type = map(string)
+  default = {
+    dev  = "t3.micro"
+    prod = "t3.medium"
+  }
+}
+
+# 访问方式：使用 key
+# var.environment_configs["dev"]  -> "t3.micro"
+
+```
+## 详细对比
+
+| 特性         | List (列表)                     | Map (映射)                     |
+| :----------- | :------------------------------- | :----------------------------- |
+| **访问方式** | `var.name[0]` (索引)             | `var.name["key"]` (键)         |
+| **顺序**     | 有序                             | 无序                           |
+| **用途**     | 处理序列、轮询、循环             | 查找、分类、环境标识           |
+| **存储数据** | 多个相同性质的项目               | 将属性与标识绑定               |
 
 
