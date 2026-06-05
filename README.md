@@ -41,31 +41,7 @@ If not using OIDC, configure the following secrets in GitHub repository settings
 
 When code is merged to the `main` branch, GitHub Actions will:
 
-1. Run `terraform plan` to show what will change
-2. Run `terraform apply -auto-approve` to deploy the infrastructure
-
-### Manual Destruction
-
-⚠️ **Resources are NOT automatically destroyed.** To clean up resources, you must manually run the destroy workflow:
-
-1. Go to GitHub repository → **Actions** tab
-2. Select **Terraform Destroy** workflow (if configured)
-3. Click **Run workflow** → **Run workflow**
-
-Or run locally:
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd <repository-directory>
-
-# Initialize Terraform
-terraform init
-
-# Destroy all resources
-terraform destroy
-
-```
+then will trigger "deploy-vpc.yaml" Github action workflow to deploy AWS resources
 
 ## for_each used in main.tf
 
@@ -87,3 +63,68 @@ module "vpc" {
   enable_nat_gateway   = each.value.enable_nat_gateway
 }
 ```
+
+## Destroy Infrastructure or Remove VPC
+
+- You can modify terraform.tfvars file to destroy whole infrastructure or remove Prod or Dev VPCs
+
+- Destroy ALL VPCs using an empty map
+
+```shell
+vpc_configs = {
+#   dev = {
+#     cidr                 = "10.10.0.0/16"
+#     public_subnet_count  = 2
+#     private_subnet_count = 2
+#     enable_nat_gateway   = true
+#   }
+#   prod = {
+#     cidr                 = "10.20.0.0/16"
+#     public_subnet_count  = 3
+#     private_subnet_count = 3
+#     enable_nat_gateway   = true
+#   }
+}
+
+```
+- Remove DEV VPC 
+
+```shell
+vpc_configs = {
+#   dev = {
+#     cidr                 = "10.10.0.0/16"
+#     public_subnet_count  = 2
+#     private_subnet_count = 2
+#     enable_nat_gateway   = true
+#   }
+  prod = {
+    cidr                 = "10.20.0.0/16"
+    public_subnet_count  = 3
+    private_subnet_count = 3
+    enable_nat_gateway   = true
+  }
+}
+
+```
+
+- Remove PROD VPC
+
+```shell
+vpc_configs = {
+  dev = {
+    cidr                 = "10.10.0.0/16"
+    public_subnet_count  = 2
+    private_subnet_count = 2
+    enable_nat_gateway   = true
+  }
+#   prod = {
+#     cidr                 = "10.20.0.0/16"
+#     public_subnet_count  = 3
+#     private_subnet_count = 3
+#     enable_nat_gateway   = true
+#   }
+}
+```
+
+
+
