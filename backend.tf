@@ -1,4 +1,3 @@
-# infra-vpc/terraform/backend.tf
 terraform {
   backend "s3" {
 
